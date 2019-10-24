@@ -146,8 +146,8 @@ class Node:
         self.__guards: List[GuardCondition] = []
         self.__waitables: List[Waitable] = []
         self._default_callback_group = MutuallyExclusiveCallbackGroup()
+        self._parameters_callback: List[Callable[[List[Parameter]], SetParametersResult]] = []
         self._rate_group = ReentrantCallbackGroup()
-        self._parameters_callback = None
         self._allow_undeclared_parameters = allow_undeclared_parameters
         self._parameter_overrides = {}
         self._descriptors = {}
@@ -715,9 +715,11 @@ class Node:
         if not result.successful:
             return result
         elif self._parameters_callback:
-            result = self._parameters_callback(parameter_list)
-        else:
-            result = SetParametersResult(successful=True)
+            for callback in self._parameters_callback:
+                result = callback(parameter_list)
+                if(not result.successful):
+                    return result
+        result = SetParametersResult(successful=True)
 
         if result.successful:
             parameter_event = ParameterEvent()
@@ -760,6 +762,25 @@ class Node:
             self._parameter_event_publisher.publish(parameter_event)
 
         return result
+
+    def add_on_set_paramters_callback(
+        self,
+        callback: Callable[[List[Parameter]], SetParametersResult]
+    ) -> None:
+        """Add the callback to list."""
+        prevCallBack = self._parameters_callback
+        prevCallBack.insert(0, callback)
+        self._parameters_callback = prevCallBack
+
+    def remove_on_set_parameters_callback(
+        self,
+        callback: Callable[[List[Parameter]], SetParametersResult]
+    ) -> None:
+        """Remove callback from list."""
+        if callback in self._parameters_callback:
+            self._parameters_callback.remove(callback)
+        else:
+            print('Callback does not exist')
 
     def _apply_descriptors(
         self,
@@ -1019,7 +1040,7 @@ class Node:
         """
         Register a set parameters callback.
 
-        Calling this function with override any previously registered callback.
+        Calling this function will override any previously registered callback.
 
         :param callback: The function that is called whenever parameters are set for the node.
         """
