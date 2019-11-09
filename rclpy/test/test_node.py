@@ -838,6 +838,165 @@ class TestNode(unittest.TestCase):
         self.assertIsInstance(result[0], SetParametersResult)
         self.assertFalse(result[0].successful)
 
+    def reject_parameter_callback_1(self, parameter_list):
+        rejected_parameters = (
+            param for param in parameter_list if 'reject1' in param.name)
+        return SetParametersResult(successful=(not any(rejected_parameters)))
+
+    def reject_parameter_callback_2(self, parameter_list):
+        rejected_parameters = (
+            param for param in parameter_list if 'reject2' in param.name)
+        return SetParametersResult(successful=(not any(rejected_parameters)))
+
+    def reject_parameter_callback_3(self, parameter_list):
+        rejected_parameters = (
+            param for param in parameter_list if 'reject3' in param.name)
+        return SetParametersResult(successful=(not any(rejected_parameters)))
+
+    def test_node_set_paramters_rejection_list(self):
+        # Declare a new paramters and set a list of callbacks so that it's rejected when set.
+        reject_list_parameter_tuple = [
+            (
+                'reject1', True, ParameterDescriptor()
+            ),
+            (
+                'non_reject', True, ParameterDescriptor()
+            ),
+            (
+                'non_reject', True, ParameterDescriptor()
+            )
+        ]
+
+        self.node.declare_parameters('', reject_list_parameter_tuple)
+        self.node.add_on_set_parameters_callback(
+            self.reject_parameter_callback_1)
+        self.node.add_on_set_parameters_callback(
+            self.reject_parameter_callback_2)
+        self.node.add_on_set_parameters_callback(
+            self.reject_parameter_callback_3)
+
+        result = self.node.set_parameters(
+            [
+                Parameter(
+                    name=reject_list_parameter_tuple[0][0],
+                    value=reject_list_parameter_tuple[0][1]
+                ),
+                Parameter(
+                    name=reject_list_parameter_tuple[1][0],
+                    value=reject_list_parameter_tuple[1][1]
+                ),
+                Parameter(
+                    name=reject_list_parameter_tuple[2][0],
+                    value=reject_list_parameter_tuple[2][1]
+                )
+            ]
+        )
+        self.assertIsInstance(result, list)
+        self.assertIsInstance(result[0], SetParametersResult)
+        self.assertFalse(result[0].successful)
+
+        # Adding more parameters.
+        success_parameters_list_tuple = [
+            (
+                'success1', True, ParameterDescriptor()
+            ),
+            (
+                'success2', True, ParameterDescriptor()
+            ),
+            (
+                'success3', True, ParameterDescriptor()
+            )
+        ]
+        self.node.declare_parameters('', success_parameters_list_tuple)
+        result = self.node._set_parameters(
+            [
+                Parameter(
+                    name=success_parameters_list_tuple[0][0],
+                    value=success_parameters_list_tuple[0][1]
+                ),
+                Parameter(
+                    name=success_parameters_list_tuple[1][0],
+                    value=success_parameters_list_tuple[1][1]
+                ),
+                Parameter(
+                    name=success_parameters_list_tuple[2][0],
+                    value=success_parameters_list_tuple[2][1]
+                )
+            ]
+        )
+        self.assertIsInstance(result, list)
+        self.assertIsInstance(result[0], SetParametersResult)
+        self.assertTrue(result[0].successful)
+
+    def test_node_add_on_set_paramter_callback(self):
+        # Add callbacks to the list of callbacks.
+
+        callbacks = [
+            self.reject_parameter_callback,
+            self.reject_parameter_callback_1,
+            self.reject_parameter_callback_2,
+            self.reject_parameter_callback_3
+        ]
+        for callback in callbacks:
+            self.node.add_on_set_parameters_callback(callback)
+
+        for callback in callbacks:
+            self.assertTrue(callback in self.node._parameters_callbacks)
+
+    def test_node_remove_from_set_callback(self):
+        # Remove callbacks from list of callbacks.
+
+        paramter_tuple = (
+            'reject1', True, ParameterDescriptor()
+        )
+
+        self.node.declare_parameter(*paramter_tuple)
+
+        callbacks = [
+            self.reject_parameter_callback,
+            self.reject_parameter_callback_1,
+            self.reject_parameter_callback_2,
+            self.reject_parameter_callback_3
+        ]
+        # Checking if the callbacks are not already present.
+        for callback in callbacks:
+            self.assertFalse(callback in self.node._parameters_callbacks)
+
+        for callback in callbacks:
+            self.node.add_on_set_parameters_callback(callback)
+
+        result = self.node.set_parameters(
+            [
+                Parameter(
+                    name=paramter_tuple[0],
+                    value=paramter_tuple[0]
+                )
+            ]
+        )
+        self.assertIsInstance(result, list)
+        self.assertIsInstance(result[0], SetParametersResult)
+        self.assertFalse(result[0].successful)
+
+        # Removing the callback which is causing the rejection.
+
+        self.node.remove_on_set_parameters_callback(
+            self.reject_parameter_callback_1)
+        self.assertFalse(
+            self.reject_parameter_callback_1 in self.node._parameters_callbacks)
+
+        # Now the setting its value again.
+        result = self.node.set_parameters(
+            [
+                Parameter(
+                    name=paramter_tuple[0],
+                    value=paramter_tuple[1]
+                )
+            ]
+        )
+        self.assertIsInstance(result, list)
+        self.assertIsInstance(result[0], SetParametersResult)
+        self.assertTrue(result[0].successful)
+
     def test_node_set_parameters_read_only(self):
         integer_value = 42
         string_value = 'hello'

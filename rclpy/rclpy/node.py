@@ -146,7 +146,7 @@ class Node:
         self.__guards: List[GuardCondition] = []
         self.__waitables: List[Waitable] = []
         self._default_callback_group = MutuallyExclusiveCallbackGroup()
-        self._parameters_callback: List[Callable[[List[Parameter]], SetParametersResult]] = []
+        self._parameters_callbacks: List[Callable[[List[Parameter]], SetParametersResult]] = []
         self._rate_group = ReentrantCallbackGroup()
         self._allow_undeclared_parameters = allow_undeclared_parameters
         self._parameter_overrides = {}
@@ -714,10 +714,10 @@ class Node:
 
         if not result.successful:
             return result
-        elif self._parameters_callback:
-            for callback in self._parameters_callback:
+        elif self._parameters_callbacks:
+            for callback in self._parameters_callbacks:
                 result = callback(parameter_list)
-                if(not result.successful):
+                if not result.successful:
                     return result
         result = SetParametersResult(successful=True)
 
@@ -763,24 +763,32 @@ class Node:
 
         return result
 
-    def add_on_set_paramters_callback(
+    def add_on_set_parameters_callback(
         self,
         callback: Callable[[List[Parameter]], SetParametersResult]
     ) -> None:
-        """Add the callback to list."""
-        prevCallBack = self._parameters_callback
-        prevCallBack.insert(0, callback)
-        self._parameters_callback = prevCallBack
+        """
+        Add a callback in front to the list of callbacks.
+
+        Calling this function will add a callback in self._parameter_callbacks list.
+
+        :param callback: The function that is called whenever parameters are set for the node.
+        """
+        self._parameters_callbacks.insert(0, callback)
 
     def remove_on_set_parameters_callback(
         self,
         callback: Callable[[List[Parameter]], SetParametersResult]
     ) -> None:
-        """Remove callback from list."""
-        if callback in self._parameters_callback:
-            self._parameters_callback.remove(callback)
-        else:
-            print('Callback does not exist')
+        """
+        Remove a callback from list of callbacks.
+
+        Calling this function will remove the callback from self._parameter_callbacks list.
+
+        :param callback: The function that is called whenever parameters are set for the node.
+        :raises: ValueError if a callback is not present in the list of callbacks.
+        """
+        self._parameters_callbacks.remove(callback)
 
     def _apply_descriptors(
         self,
@@ -1040,11 +1048,11 @@ class Node:
         """
         Register a set parameters callback.
 
-        Calling this function will override any previously registered callback.
+        Calling this function will add a callback in self._parameter_callbacks list.
 
         :param callback: The function that is called whenever parameters are set for the node.
         """
-        self._parameters_callback = callback
+        self._parameters_callbacks = [callback]
 
     def _validate_topic_or_service_name(self, topic_or_service_name, *, is_service=False):
         name = self.get_name()
