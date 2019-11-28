@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pathli
+import pathlib
 import unittest
 from unittest.mock import Mock
 
@@ -895,38 +895,9 @@ class TestNode(unittest.TestCase):
         self.assertIsInstance(result[0], SetParametersResult)
         self.assertFalse(result[0].successful)
 
-        # Adding more parameters.
-        success_parameters_list_tuple = [
-            (
-                'success1', True, ParameterDescriptor()
-            ),
-            (
-                'success2', True, ParameterDescriptor()
-            ),
-            (
-                'success3', True, ParameterDescriptor()
-            )
-        ]
-        self.node.declare_parameters('', success_parameters_list_tuple)
-        result = self.node._set_parameters(
-            [
-                Parameter(
-                    name=success_parameters_list_tuple[0][0],
-                    value=success_parameters_list_tuple[0][1]
-                ),
-                Parameter(
-                    name=success_parameters_list_tuple[1][0],
-                    value=success_parameters_list_tuple[1][1]
-                ),
-                Parameter(
-                    name=success_parameters_list_tuple[2][0],
-                    value=success_parameters_list_tuple[2][1]
-                )
-            ]
-        )
-        self.assertIsInstance(result, list)
-        self.assertIsInstance(result[0], SetParametersResult)
-        self.assertTrue(result[0].successful)
+        # Testing with setting new paramter with successful result with
+        # Previously declared function.
+        self.test_node_set_parameters()
 
     def test_node_add_on_set_paramter_callback(self):
         # Add callbacks to the list of callbacks.
@@ -955,8 +926,6 @@ class TestNode(unittest.TestCase):
         callbacks = [
             self.reject_parameter_callback,
             self.reject_parameter_callback_1,
-            self.reject_parameter_callback_2,
-            self.reject_parameter_callback_3
         ]
         # Checking if the callbacks are not already present.
         for callback in callbacks:
